@@ -14,6 +14,37 @@ class AssistantCoreTests(unittest.TestCase):
             "http://127.0.0.1:11434", "qwen2.5-coder:latest"
         )
 
+    def test_available_models_uses_local_ollama_tags(self):
+        response = io.BytesIO(
+            json.dumps(
+                {
+                    "models": [
+                        {"name": "qwen:14b"},
+                        {"name": "llama:latest"},
+                        {"name": "qwen:14b"},
+                    ]
+                }
+            ).encode("utf-8")
+        )
+        with patch(
+            "assistant_core.urllib.request.urlopen", return_value=response
+        ) as open_url:
+            models = self.assistant.get_available_models()
+
+        self.assertEqual(models, ["qwen:14b", "llama:latest"])
+        self.assertEqual(
+            open_url.call_args.args[0].full_url,
+            "http://127.0.0.1:11434/api/tags",
+        )
+
+    def test_available_models_reports_ollama_connection_errors(self):
+        with patch(
+            "assistant_core.urllib.request.urlopen",
+            side_effect=urllib.error.URLError("offline"),
+        ):
+            with self.assertRaisesRegex(AssistantError, "Ne mogu se povezati s Ollamom"):
+                self.assistant.get_available_models()
+
     def test_chat_text_is_sent_to_local_model_not_executed(self):
         with patch.object(self.assistant, "_chat", return_value="Odgovor") as chat:
             response = self.assistant.handle("napravi mi popis ideja")

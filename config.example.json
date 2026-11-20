@@ -2,5 +2,7 @@
   "greeting": "Pozdrav! Ja sam Jarvis, vaš osobni asistent.",
   "ollama_model": "qwen2.5-coder:latest",
   "ollama_url": "http://127.0.0.1:11434",
-  "speech_language": "hr-HR"
+  "speech_language": "hr-HR",
+  "weather_location": "Zagreb",
+  "theme": "jarvis"
 }

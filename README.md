@@ -61,6 +61,14 @@ mjestu pitanjem poput `kakvo je vrijeme u Zagrebu`, prikazati 7-dnevnu prognozu,
 pretražiti web naredbom `pretraži internet za ...` te otvoriti HTTP/HTTPS adresu.
 Naziv mjesta za
 vremensku prognozu šalje se Open-Meteu; web-pretraga šalje upit DuckDuckGo-u.
+Dnevni pregled prikazuje prognozu i lokalno unesene obaveze pri prvom otvaranju
+svakog dana. Obaveze se čuvaju u lokalnoj pohrani preglednika, a model, jezik
+govora, tema i mjesto za prognozu spremaju se u lokalni `config.json`.
+Dnevni pregled možeš otvoriti gumbom ili naredbom `otvori dnevni pregled`.
+Obavezu možeš dodati porukom ili glasom naredbom poput `Dodaj obavezu:
+nazvati liječnika sutra` ili `Podsjeti me da kupim kruh u ponedjeljak`.
+Prepoznaju se relativni rokovi, dani u tjednu i datumi; ako rok nije naveden,
+obaveza se sprema za danas.
 Podržane radne naredbe su `otvori ovaj projekt u VSCode`, `pokreni testove`,
 `pokreni build`, `git status` i `git log`. Git radnje podržavaju
 `git commit "poruka"` i `git sync "poruka"`. Sinkronizacija najprije povlači

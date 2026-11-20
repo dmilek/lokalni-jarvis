@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="hr">
+<html lang="hr" data-theme="{{ theme }}">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -18,10 +18,15 @@
             <h1>JARVIS</h1>
           </div>
         </div>
-        <div class="connection">
-          <span class="connection-dot" aria-hidden="true"></span>
-          <span>OLLAMA / LOKALNO</span>
-          <span class="model-name">{{ model }}</span>
+        <div class="header-tools">
+          <button id="settings-open-button" class="toolbar-button" type="button">
+            POSTAVKE
+          </button>
+          <div class="connection">
+            <span class="connection-dot" aria-hidden="true"></span>
+            <span>OLLAMA / LOKALNO</span>
+            <span class="model-name">{{ model }}</span>
+          </div>
         </div>
       </header>
 
@@ -48,7 +53,7 @@
             <div class="weather-heading">
               <div>
                 <p class="eyebrow">VRIJEME / MJESTO</p>
-                <strong id="weather-location">Zagreb</strong>
+                <strong id="weather-location">{{ weather_location }}</strong>
               </div>
               <span class="weather-sky-pair" aria-label="Sunce i mjesec">
                 ☀ <span aria-hidden="true">·</span> ☾
@@ -64,7 +69,7 @@
                 name="location"
                 type="text"
                 maxlength="100"
-                value="Zagreb"
+                value="{{ weather_location }}"
                 placeholder="Grad ili mjesto"
               >
               <button type="submit" aria-label="Provjeri vrijeme">↗</button>
@@ -125,7 +130,15 @@
               <p class="eyebrow">SESIJA / SPREMNA ZA UNOS</p>
               <h2>Kako ti mogu pomoći?</h2>
             </div>
-            <span class="local-badge"><span aria-hidden="true"></span> LOKALNA VEZA</span>
+            <div class="conversation-tools">
+              <button id="briefing-open-button" class="toolbar-button" type="button">
+                DNEVNI PREGLED
+              </button>
+              <button id="tasks-open-button" class="toolbar-button" type="button">
+                OBAVEZE
+              </button>
+              <span class="local-badge"><span aria-hidden="true"></span> LOKALNA VEZA</span>
+            </div>
           </div>
 
           <div id="messages" class="messages" aria-live="polite">
@@ -147,7 +160,7 @@
               name="message"
               rows="1"
               maxlength="2000"
-              placeholder="Unesi poruku ili pokreni glasovni unos..."
+              placeholder='Poruka ili naredba: "Dodaj obavezu: nazvati liječnika sutra"'
               autocomplete="off"
               required
             ></textarea>
@@ -173,6 +186,70 @@
           </p>
         </section>
       </div>
+
+      <dialog id="settings-dialog" class="app-dialog" aria-labelledby="settings-title">
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow">LOKALNA KONFIGURACIJA</p>
+            <h2 id="settings-title">Postavke Jarvisa</h2>
+          </div>
+          <button class="dialog-close" type="button" data-close-dialog aria-label="Zatvori">
+            ×
+          </button>
+        </div>
+        <form id="settings-form" class="settings-form">
+          <label for="settings-model">
+            Ollama model
+            <select id="settings-model" name="ollama_model" required></select>
+          </label>
+          <label for="settings-language">
+            Jezik glasa
+            <select id="settings-language" name="speech_language">
+              <option value="hr-HR">Hrvatski</option>
+              <option value="en-US">Engleski</option>
+            </select>
+          </label>
+          <label for="settings-theme">
+            Tema sučelja
+            <select id="settings-theme" name="theme">
+              <option value="jarvis">Jarvis — tirkizna</option>
+              <option value="sunset">Zalazak — narančasta</option>
+              <option value="violet">Ljubičasta</option>
+            </select>
+          </label>
+          <label for="settings-location">
+            Mjesto za prognozu
+            <input id="settings-location" name="weather_location" type="text" maxlength="100" required>
+          </label>
+          <p id="settings-status" class="dialog-status" role="status"></p>
+          <button class="dialog-submit" type="submit">SPREMI POSTAVKE</button>
+        </form>
+      </dialog>
+
+      <dialog id="tasks-dialog" class="app-dialog" aria-labelledby="tasks-title">
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow">LOKALNI POPIS</p>
+            <h2 id="tasks-title">Obaveze</h2>
+          </div>
+          <button class="dialog-close" type="button" data-close-dialog aria-label="Zatvori">
+            ×
+          </button>
+        </div>
+        <form id="task-form" class="task-form">
+          <label for="task-title">
+            Novi zadatak
+            <input id="task-title" name="title" type="text" maxlength="100" placeholder="Što treba napraviti?" required>
+          </label>
+          <label for="task-due-date">
+            Rok
+            <input id="task-due-date" name="due_date" type="date" required>
+          </label>
+          <button class="dialog-submit" type="submit">DODAJ</button>
+        </form>
+        <p id="tasks-status" class="dialog-status" role="status"></p>
+        <ul id="task-list" class="task-list"></ul>
+      </dialog>
 
       <footer class="footer">
         <span><span class="footer-mark" aria-hidden="true">◆</span> JARVIS · RADI NA TVOM RAČUNALU</span>

@@ -112,6 +112,39 @@ class AssistantCore:
             }
         ]
 
+    def get_available_models(self):
+        tags_url = self.api_url.rsplit("/api/chat", 1)[0] + "/api/tags"
+        request = urllib.request.Request(
+            tags_url,
+            headers={"Accept": "application/json"},
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=10) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            raise AssistantError(
+                "Ollama je vratila HTTP "
+                + str(exc.code)
+                + " pri dohvaćanju popisa modela."
+            ) from exc
+        except (urllib.error.URLError, TimeoutError) as exc:
+            raise AssistantError(
+                "Ne mogu se povezati s Ollamom. Provjeri je li Ollama pokrenuta."
+            ) from exc
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise AssistantError("Ollama je vratila neispravan popis modela.") from exc
+
+        if not isinstance(payload, dict) or not isinstance(payload.get("models"), list):
+            raise AssistantError("Ollama je vratila neispravan popis modela.")
+
+        models = []
+        for item in payload["models"]:
+            if not isinstance(item, dict) or not isinstance(item.get("name"), str):
+                raise AssistantError("Ollama je vratila neispravan popis modela.")
+            if item["name"] and item["name"] not in models:
+                models.append(item["name"])
+        return models
+
     def handle(self, prompt):
         prompt = prompt.strip()
         if not prompt:

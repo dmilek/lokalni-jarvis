@@ -1,10 +1,12 @@
+import hmac
 import json
 import os
 from pathlib import Path
+import secrets
 from tempfile import NamedTemporaryFile
 from threading import Lock
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, current_app, jsonify, render_template, request
 
 from assistant_core import AssistantCore, AssistantError
 
@@ -56,6 +58,24 @@ def create_app(assistant=None, config=None):
     assistant_lock = Lock()
     app = Flask(__name__)
     app.config["MAX_CONTENT_LENGTH"] = 16 * 1024
+    app.config["CSRF_TOKEN"] = secrets.token_urlsafe(32)
+
+    @app.before_request
+    def protect_api_mutations():
+        if request.path.startswith("/api/") and request.method in {
+            "POST",
+            "PUT",
+            "PATCH",
+            "DELETE",
+        }:
+            supplied_token = request.headers.get("X-CSRF-Token", "")
+            if not hmac.compare_digest(supplied_token, app.config["CSRF_TOKEN"]):
+                return (
+                    jsonify(
+                        error="Zahtjev nije valjan. Osvježi stranicu i pokušaj ponovno."
+                    ),
+                    403,
+                )
 
     @app.get("/")
     def index():
@@ -68,6 +88,7 @@ def create_app(assistant=None, config=None):
             speech_language=config.get("speech_language", "hr-HR"),
             weather_location=config.get("weather_location", "Zagreb"),
             theme=config.get("theme", "jarvis"),
+            csrf_token=app.config["CSRF_TOKEN"],
         )
 
     @app.post("/api/chat")
@@ -83,7 +104,13 @@ def create_app(assistant=None, config=None):
             with assistant_lock:
                 reply = assistant.handle(message)
         except AssistantError as exc:
-            return jsonify(error=str(exc)), 502
+            current_app.logger.warning("Assistant chat request failed: %s", exc)
+            return jsonify(
+                error=(
+                    "Jarvis trenutno ne može odgovoriti. "
+                    "Provjeri lokalni model i pokušaj ponovno."
+                )
+            ), 502
         return jsonify(reply=reply)
 
     @app.get("/api/weather")
@@ -94,7 +121,8 @@ def create_app(assistant=None, config=None):
         try:
             reply = assistant.handle(f"kakvo je vrijeme u {location}")
         except AssistantError as exc:
-            return jsonify(error=str(exc)), 502
+            current_app.logger.warning("Weather request failed: %s", exc)
+            return jsonify(error="Trenutačnu prognozu nije moguće dohvatiti."), 502
         return jsonify(reply=reply)
 
     @app.get("/api/weather/forecast")
@@ -105,7 +133,8 @@ def create_app(assistant=None, config=None):
         try:
             forecast = assistant.get_weekly_weather(location)
         except AssistantError as exc:
-            return jsonify(error=str(exc)), 502
+            current_app.logger.warning("Weekly weather request failed: %s", exc)
+            return jsonify(error="Tjednu prognozu nije moguće dohvatiti."), 502
         return jsonify(forecast)
 
     @app.get("/api/settings")
@@ -123,7 +152,8 @@ def create_app(assistant=None, config=None):
             with assistant_lock:
                 models = assistant.get_available_models()
         except AssistantError as exc:
-            return jsonify(error=str(exc)), 502
+            current_app.logger.warning("Ollama model-list request failed: %s", exc)
+            return jsonify(error="Popis lokalnih modela nije moguće dohvatiti."), 502
         return jsonify(models=models)
 
     @app.post("/api/settings")
@@ -164,7 +194,13 @@ def create_app(assistant=None, config=None):
                 try:
                     available_models = assistant.get_available_models()
                 except AssistantError as exc:
-                    return jsonify(error=str(exc)), 502
+                    current_app.logger.warning(
+                        "Ollama model-list request failed: %s", exc
+                    )
+                    return (
+                        jsonify(error="Popis lokalnih modela nije moguće dohvatiti."),
+                        502,
+                    )
                 if model.strip() not in available_models:
                     return jsonify(error="Odabrani model nije instaliran u Ollami."), 400
 

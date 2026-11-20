@@ -120,9 +120,24 @@ function dateKey(date) {
 }
 
 function createTask(title, dueDate) {
-  const id = window.crypto?.randomUUID
-    ? window.crypto.randomUUID()
-    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  let id;
+  if (window.crypto?.randomUUID) {
+    id = window.crypto.randomUUID();
+  } else {
+    const bytes = window.crypto.getRandomValues(new Uint8Array(16));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = Array.from(bytes, (byte) =>
+      byte.toString(16).padStart(2, "0")
+    ).join("");
+    id = [
+      hex.slice(0, 8),
+      hex.slice(8, 12),
+      hex.slice(12, 16),
+      hex.slice(16, 20),
+      hex.slice(20),
+    ].join("-");
+  }
   return { id, title, dueDate, done: false };
 }
 
@@ -693,7 +708,10 @@ settingsForm.addEventListener("submit", async (event) => {
   try {
     const response = await fetch("/api/settings", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": window.jarvisCsrfToken,
+      },
       body: JSON.stringify(settings),
     });
     const payload = await response.json();
@@ -873,7 +891,10 @@ async function sendMessage(rawMessage, source = "text") {
   try {
     const response = await fetch("/api/chat", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": window.jarvisCsrfToken,
+      },
       body: JSON.stringify({ message }),
     });
     const payload = await response.json();

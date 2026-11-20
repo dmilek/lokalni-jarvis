@@ -6,8 +6,8 @@ Open-Meteo.
 
 ## Pokretanje
 
-Potrebni su Python 3.8+ i pokrenuta lokalna Ollama instalacija. Iz mape
-projekta pokreni:
+Potrebni su Python 3.8+ i pokrenuta lokalna Ollama instalacija. MCP server
+zahtijeva Python 3.10+. Iz mape projekta pokreni:
 
 ```bash
 python3 -m venv .venv
@@ -16,6 +16,8 @@ python -m pip install -e .
 cp config.example.json config.json
 python jarvis_gui.py
 ```
+
+Za ponovljivu instalaciju zaključanih verzija možeš koristiti `uv sync --locked`.
 
 Otvori [http://127.0.0.1:8000](http://127.0.0.1:8000). Terminal mora ostati
 otvoren dok koristiš Jarvisa. Za gašenje servera pritisni `Ctrl+C`.

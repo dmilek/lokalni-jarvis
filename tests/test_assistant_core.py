@@ -97,13 +97,28 @@ class AssistantCoreTests(unittest.TestCase):
             Mock(returncode=1, stdout="", stderr=""),
             Mock(returncode=0, stdout="[main abc123] Update UI\n", stderr=""),
         ]
+        commit_message = "Update UI; echo unsafe"
         with patch("assistant_core.subprocess.run", side_effect=responses) as run:
-            response = self.assistant.handle("git commit Update UI")
+            response = self.assistant.handle(f"git commit {commit_message}")
 
         self.assertIn("Update UI", response)
         commands = [call.args[0] for call in run.call_args_list]
         self.assertIn(["git", "add", "-A"], commands)
-        self.assertIn(["git", "commit", "-m", "Update UI"], commands)
+        self.assertIn(["git", "commit", "-m", commit_message], commands)
+        self.assertTrue(
+            all(call.kwargs["shell"] is False for call in run.call_args_list)
+        )
+
+    def test_long_prompt_is_rejected_before_weather_location_extraction(self):
+        with patch.object(
+            self.assistant,
+            "_weather_location",
+            side_effect=AssertionError("weather regex should not run"),
+        ) as extract_location:
+            with self.assertRaisesRegex(AssistantError, "Poruka je preduga"):
+                self.assistant.handle("weather in " + "x" * 2000)
+
+        extract_location.assert_not_called()
 
     def test_git_sync_pulls_before_commit_and_push(self):
         responses = [

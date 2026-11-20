@@ -297,6 +297,7 @@ class AssistantCore:
                 text=True,
                 timeout=timeout,
                 check=False,
+                shell=False,
             )
         except subprocess.TimeoutExpired as exc:
             raise AssistantError("Git operacija je prekoračila vremensko ograničenje.") from exc
@@ -473,6 +474,7 @@ class AssistantCore:
 
     @staticmethod
     def _weather_location(prompt):
+        prompt = prompt.strip(" \t.,!?")
         prefixes = (
             "kako je vrijeme trenutno u ",
             "kako je vrijeme danas u ",
@@ -493,10 +495,10 @@ class AssistantCore:
             "weather in ",
             "weather for ",
         )
-        normalized = prompt.casefold().strip().strip(" \t.,!?")
+        normalized = prompt.casefold()
         for prefix in prefixes:
             if normalized.startswith(prefix):
-                location = prompt.strip()[len(prefix):].strip(" \t.,!?")
+                location = prompt[len(prefix):].strip(" \t.,!?")
                 return location or None
 
         weather_markers = (
@@ -509,13 +511,10 @@ class AssistantCore:
         if not any(marker in normalized for marker in weather_markers):
             return None
 
-        match = re.search(
-            r"\b(?:u|za|kod|near|in|for)\s+(.+)$",
-            normalized,
-        )
+        match = re.search(r"\b(?:u|za|kod|near|in|for)\s+", prompt, re.IGNORECASE)
         if not match:
             return None
-        location = prompt.strip()[prompt.strip().casefold().find(match.group(1)):]
+        location = prompt[match.end():]
         location = location.strip(" \t.,!?")
         return location or None
         return None

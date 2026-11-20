@@ -38,6 +38,17 @@ class FakeAssistant:
         }
 
 
+class FailingAssistant(FakeAssistant):
+    def handle(self, message):
+        raise AssistantError("UPSTREAM-SECRET-SENTINEL")
+
+    def get_available_models(self):
+        raise AssistantError("UPSTREAM-SECRET-SENTINEL")
+
+    def get_weekly_weather(self, location):
+        raise AssistantError("UPSTREAM-SECRET-SENTINEL")
+
+
 class WebAppTests(unittest.TestCase):
     def setUp(self):
         self.app = create_app(
@@ -50,6 +61,11 @@ class WebAppTests(unittest.TestCase):
         )
         self.client = self.app.test_client()
 
+    def post_json(self, path, **kwargs):
+        headers = {"X-CSRF-Token": self.app.config["CSRF_TOKEN"]}
+        headers.update(kwargs.pop("headers", {}))
+        return self.client.post(path, headers=headers, **kwargs)
+
     def test_homepage_renders_web_interface(self):
         response = self.client.get("/")
 
@@ -58,24 +74,75 @@ class WebAppTests(unittest.TestCase):
         self.assertIn(b"Bok!", response.data)
         self.assertIn(b"settings-dialog", response.data)
         self.assertIn(b"tasks-dialog", response.data)
+        self.assertIn(b"jarvisCsrfToken", response.data)
 
     def test_chat_api_returns_assistant_reply(self):
-        response = self.client.post("/api/chat", json={"message": "Pozdrav"})
+        response = self.post_json("/api/chat", json={"message": "Pozdrav"})
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json(), {"reply": "Odgovor: Pozdrav"})
 
     def test_chat_api_rejects_empty_message(self):
-        response = self.client.post("/api/chat", json={"message": "  "})
+        response = self.post_json("/api/chat", json={"message": "  "})
 
         self.assertEqual(response.status_code, 400)
         self.assertIn("Poruka ne smije biti prazna.", response.get_json()["error"])
 
     def test_chat_api_surfaces_assistant_errors(self):
-        response = self.client.post("/api/chat", json={"message": "fail"})
+        response = self.post_json("/api/chat", json={"message": "fail"})
 
         self.assertEqual(response.status_code, 502)
-        self.assertEqual(response.get_json(), {"error": "Test error"})
+        self.assertEqual(
+            response.get_json(),
+            {
+                "error": (
+                    "Jarvis trenutno ne može odgovoriti. "
+                    "Provjeri lokalni model i pokušaj ponovno."
+                )
+            },
+        )
+
+    def test_api_mutations_require_csrf_token(self):
+        response = self.client.post("/api/chat", json={"message": "Pozdrav"})
+
+        self.assertEqual(response.status_code, 403)
+        self.assertNotIn("reply", response.get_json())
+
+    def test_assistant_error_details_are_not_returned_by_api(self):
+        app = create_app(
+            assistant=FailingAssistant(),
+            config={"ollama_model": "test-model", "speech_language": "hr-HR"},
+        )
+        client = app.test_client()
+        csrf_headers = {"X-CSRF-Token": app.config["CSRF_TOKEN"]}
+        responses = [
+            client.post(
+                "/api/chat",
+                json={"message": "hello"},
+                headers=csrf_headers,
+            ),
+            client.get("/api/weather?location=Zagreb"),
+            client.get("/api/weather/forecast?location=Zagreb"),
+            client.get("/api/models"),
+            client.post(
+                "/api/settings",
+                json={
+                    "ollama_model": "other-model",
+                    "speech_language": "hr-HR",
+                    "weather_location": "Zagreb",
+                    "theme": "jarvis",
+                },
+                headers=csrf_headers,
+            ),
+        ]
+
+        for response in responses:
+            with self.subTest(status=response.status_code):
+                self.assertEqual(response.status_code, 502)
+                self.assertNotIn(
+                    "UPSTREAM-SECRET-SENTINEL",
+                    response.get_data(as_text=True),
+                )
 
     def test_weekly_forecast_api(self):
         response = self.client.get("/api/weather/forecast?location=Zagreb")
@@ -106,7 +173,7 @@ class WebAppTests(unittest.TestCase):
         self.assertEqual(response.get_json(), {"models": ["test-model", "other-model"]})
 
     def test_settings_api_updates_validated_preferences(self):
-        response = self.client.post(
+        response = self.post_json(
             "/api/settings",
             json={
                 "ollama_model": "other-model",
@@ -123,7 +190,7 @@ class WebAppTests(unittest.TestCase):
         self.assertEqual(settings["theme"], "sunset")
 
     def test_settings_api_rejects_uninstalled_model(self):
-        response = self.client.post(
+        response = self.post_json(
             "/api/settings",
             json={
                 "ollama_model": "missing-model",
@@ -153,6 +220,7 @@ class WebAppTests(unittest.TestCase):
                 app = create_app(assistant=FakeAssistant())
                 response = app.test_client().post(
                     "/api/settings",
+                    headers={"X-CSRF-Token": app.config["CSRF_TOKEN"]},
                     json={
                         "ollama_model": "test-model",
                         "speech_language": "en-US",
@@ -168,7 +236,7 @@ class WebAppTests(unittest.TestCase):
             self.assertEqual(saved_config["greeting"], "Bok!")
 
     def test_settings_api_rejects_invalid_theme_and_location(self):
-        invalid_theme = self.client.post(
+        invalid_theme = self.post_json(
             "/api/settings",
             json={
                 "ollama_model": "test-model",
@@ -177,7 +245,7 @@ class WebAppTests(unittest.TestCase):
                 "theme": ["unexpected"],
             },
         )
-        invalid_location = self.client.post(
+        invalid_location = self.post_json(
             "/api/settings",
             json={
                 "ollama_model": "test-model",

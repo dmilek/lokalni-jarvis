@@ -4,6 +4,12 @@ Jarvis je web-aplikacija za lokalno računalo. Razgovor obrađuje lokalni Ollama
 model; web-pretraga koristi DuckDuckGo, a trenutačne vremenske podatke
 Open-Meteo.
 
+## Kompatibilnost s Pythonom
+
+Projekt deklarira Python 3.8 ili noviji. CI testira Python 3.8–3.15, koristeći
+najnovije dostupno izdanje svake manje verzije. MCP server zahtijeva Python
+3.10 ili noviji.
+
 ## Pokretanje
 
 Potrebni su Python 3.8+ i pokrenuta lokalna Ollama instalacija. MCP server
@@ -111,3 +117,26 @@ python jarvis_mcp.py
 Git MCP alati rade samo u Git repozitoriju s udaljenim `origin` remoteom.
 Git sync prvo koristi `pull --rebase --autostash`, zatim commit i push; ne koristi
 `push --force`, obriši grane niti proizvoljne terminalske naredbe.
+
+## SonarCloud analiza
+
+Projekt je konfiguriran za [SonarCloud](https://sonarcloud.io/project/issues?id=dmilek_lokalni-jarvis).
+Za slanje analize iz korijena projekta instaliraj SonarScanner CLI i postavi
+SonarCloud token u varijablu okruženja `SONAR_TOKEN` (token nemoj spremati u
+projekt):
+
+```bash
+brew install sonar-scanner
+export SONAR_TOKEN="tvoj-sonarcloud-token"
+sonar-scanner -Dsonar.token="$SONAR_TOKEN"
+```
+
+Analiza uključuje aplikacijski kod i testove, a preskače virtualna okruženja.
+
+Za lokalna upozorenja tijekom rada u VS Codeu instaliraj ekstenziju
+**SonarQube for IDE**, zatim u prikazu **SonarQube Setup → Connected Mode**
+poveži SonarQube Cloud organizaciju `dmilek` i projekt
+`dmilek_lokalni-jarvis`. Token unesi samo u VS Code; nemoj ga spremati u projekt
+niti slati u chat. Nakon povezivanja ekstenzija automatski prikazuje nalaze u
+**Problems**. Ta lokalna analiza ne šalje svaki nalaz u SonarCloud; za to i dalje
+pokreni SonarScanner ili automatiziraj analizu u CI-ju.

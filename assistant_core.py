@@ -517,7 +517,6 @@ class AssistantCore:
         location = prompt[match.end():]
         location = location.strip(" \t.,!?")
         return location or None
-        return None
 
     @staticmethod
     def _location_candidates(location):

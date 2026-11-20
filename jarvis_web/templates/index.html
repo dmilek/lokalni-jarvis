@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="hr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#090d18">
+    <title>Lokalni Jarvis</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script defer src="{{ url_for('static', filename='app.js') }}"></script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true"><span>J</span></div>
+          <div>
+            <p class="eyebrow">OSOBNO SUČELJE · LOKALNI SUSTAV</p>
+            <h1>JARVIS</h1>
+          </div>
+        </div>
+        <div class="connection">
+          <span class="connection-dot" aria-hidden="true"></span>
+          <span>OLLAMA / LOKALNO</span>
+          <span class="model-name">{{ model }}</span>
+        </div>
+      </header>
+
+      <div class="dashboard">
+        <aside class="system-panel panel" aria-label="Informacije o sustavu">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">SUSTAV / 01</p>
+              <h2>Kontrolna jezgra</h2>
+            </div>
+            <span class="system-state"><span aria-hidden="true"></span> AKTIVNA</span>
+          </div>
+
+          <div class="core-display" aria-hidden="true">
+            <div class="core-orbit core-orbit-outer"><span class="orbit-point"></span></div>
+            <div class="core-orbit core-orbit-inner"><span class="orbit-point"></span></div>
+            <div class="core-lens"><span>J</span></div>
+            <span class="core-crosshair core-crosshair-top"></span>
+            <span class="core-crosshair core-crosshair-bottom"></span>
+            <p class="core-caption">NEURALNO SUČELJE</p>
+          </div>
+
+          <form id="weather-form" class="weather-widget">
+            <div class="weather-heading">
+              <div>
+                <p class="eyebrow">VRIJEME / MJESTO</p>
+                <strong id="weather-location">Zagreb</strong>
+              </div>
+              <span class="weather-sky-pair" aria-label="Sunce i mjesec">
+                ☀ <span aria-hidden="true">·</span> ☾
+              </span>
+              <span id="weather-status" class="weather-status">SPREMNO</span>
+            </div>
+            <strong id="weather-summary" class="weather-summary">Provjeri prognozu</strong>
+            <div id="weather-forecast" class="weather-forecast" hidden></div>
+            <label class="weather-location-row" for="weather-location-input">
+              <span class="sr-only">Mjesto za provjeru vremena</span>
+              <input
+                id="weather-location-input"
+                name="location"
+                type="text"
+                maxlength="100"
+                value="Zagreb"
+                placeholder="Grad ili mjesto"
+              >
+              <button type="submit" aria-label="Provjeri vrijeme">↗</button>
+            </label>
+            <button id="weekly-weather-button" class="weekly-weather-button" type="button">
+              <span>OSVJEŽI 7-DNEVNU PROGNOZU</span>
+              <span aria-hidden="true">↻</span>
+            </button>
+          </form>
+
+          <div class="system-readouts">
+            <div class="readout">
+              <span class="readout-label">MODEL</span>
+              <strong class="readout-value model-readout" title="{{ model }}">{{ model }}</strong>
+            </div>
+            <div class="readout">
+              <span class="readout-label">OBRADA</span>
+              <strong class="readout-value"><span class="readout-indicator"></span> LOKALNA</strong>
+            </div>
+            <div class="readout">
+              <span class="readout-label">KANALI</span>
+              <strong class="readout-value">CHAT · GLAS · WEB</strong>
+            </div>
+          </div>
+
+          <div class="channel-strip" aria-hidden="true">
+            <span class="channel-bar"></span>
+            <span class="channel-bar"></span>
+            <span class="channel-bar"></span>
+            <span class="channel-bar"></span>
+            <span class="channel-bar"></span>
+            <span class="channel-bar"></span>
+            <span class="channel-bar"></span>
+            <span class="channel-bar"></span>
+            <span class="channel-bar"></span>
+            <span class="channel-bar"></span>
+            <span class="channel-bar"></span>
+            <span class="channel-bar"></span>
+            <span class="channel-bar"></span>
+            <span class="channel-bar"></span>
+            <span class="channel-bar"></span>
+            <span class="channel-bar"></span>
+            <span class="channel-bar"></span>
+            <span class="channel-bar"></span>
+            <span class="channel-bar"></span>
+            <span class="channel-bar"></span>
+            <span class="channel-bar"></span>
+            <span class="channel-bar"></span>
+            <span class="channel-bar"></span>
+            <span class="channel-bar"></span>
+          </div>
+          <p class="panel-footnote"><span aria-hidden="true">◆</span> LOKALNI NAČIN RADA</p>
+        </aside>
+
+        <section class="conversation panel" aria-label="Razgovor s Jarvisom">
+          <div class="conversation-heading">
+            <div>
+              <p class="eyebrow">SESIJA / SPREMNA ZA UNOS</p>
+              <h2>Kako ti mogu pomoći?</h2>
+            </div>
+            <span class="local-badge"><span aria-hidden="true"></span> LOKALNA VEZA</span>
+          </div>
+
+          <div id="messages" class="messages" aria-live="polite">
+            <article class="message assistant-message">
+              <div class="message-avatar" aria-hidden="true">J</div>
+              <div class="message-content">
+                <span class="message-author">JARVIS <span>· ASISTENT</span></span>
+                <div class="message-bubble">{{ greeting }}</div>
+              </div>
+            </article>
+          </div>
+
+          <div id="status" class="status" role="status">SPREMAN</div>
+
+          <form id="chat-form" class="composer">
+            <label class="sr-only" for="message-input">Poruka za Jarvisa</label>
+            <textarea
+              id="message-input"
+              name="message"
+              rows="1"
+              maxlength="2000"
+              placeholder="Unesi poruku ili pokreni glasovni unos..."
+              autocomplete="off"
+              required
+            ></textarea>
+            <div class="composer-footer">
+              <div class="composer-hint">ENTER <span>ZA SLANJE</span> <b>·</b> SHIFT + ENTER <span>NOVI RED</span></div>
+              <div class="composer-actions">
+                <button id="mic-button" class="mic-button" type="button" aria-label="Govori">
+                  <span class="mic-icon" aria-hidden="true">◉</span>
+                  <span id="mic-label">GOVORI</span>
+                </button>
+                <button id="send-button" class="send-button" type="submit">
+                  <span>POŠALJI</span>
+                  <span aria-hidden="true">↗</span>
+                </button>
+              </div>
+            </div>
+          </form>
+
+          <p class="privacy-note">
+            Razgovor ide lokalnom modelu. Upit o vremenu šalje naziv mjesta
+            Open-Meteu. Glasovno prepoznavanje šalje zvuk online pružatelju usluge;
+            Jarvis ga ne pohranjuje.
+          </p>
+        </section>
+      </div>
+
+      <footer class="footer">
+        <span><span class="footer-mark" aria-hidden="true">◆</span> JARVIS · RADI NA TVOM RAČUNALU</span>
+        <span>WEB-PRETRAGA / DUCKDUCKGO</span>
+      </footer>
+    </main>
+    <script>
+      window.jarvisSpeechLanguage = {{ speech_language|tojson }};
+    </script>
+  </body>
+</html>

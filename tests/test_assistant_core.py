@@ -14,6 +14,63 @@ class AssistantCoreTests(unittest.TestCase):
             "http://127.0.0.1:11434", "qwen2.5-coder:latest"
         )
 
+    def test_english_language_supports_common_commands(self):
+        assistant = AssistantCore(
+            "http://127.0.0.1:11434",
+            "qwen2.5-coder:latest",
+            speech_language="en-US",
+        )
+
+        self.assertIn("Today is", assistant.handle("what is the date"))
+        self.assertIn("It is", assistant.handle("what time is it"))
+        self.assertIn("search the web", assistant.handle("help").lower())
+        self.assertIn("Answer in English", assistant.history[0]["content"])
+
+    def test_set_language_changes_system_prompt_and_history(self):
+        self.assistant.set_language("en-US")
+
+        self.assertEqual(self.assistant.speech_language, "en-US")
+        self.assertIn("Answer in English", self.assistant.history[0]["content"])
+
+    def test_model_routing_selects_fast_and_quality_models(self):
+        assistant = AssistantCore(
+            "http://127.0.0.1:11434",
+            "default-model",
+            fast_model="fast-model",
+            quality_model="quality-model",
+        )
+
+        self.assertEqual(assistant.select_model("Koliko je sati?"), "fast-model")
+        self.assertEqual(
+            assistant.select_model("Analiziraj ovaj Python kod i predloži refactor"),
+            "quality-model",
+        )
+
+    def test_model_routing_can_be_disabled(self):
+        assistant = AssistantCore(
+            "http://127.0.0.1:11434",
+            "default-model",
+            fast_model="fast-model",
+            quality_model="quality-model",
+            auto_model_routing=False,
+        )
+
+        self.assertEqual(
+            assistant.select_model("Analiziraj ovaj projekt"),
+            "default-model",
+        )
+
+    def test_english_web_search_prefix_is_supported(self):
+        assistant = AssistantCore(
+            "http://127.0.0.1:11434",
+            "qwen2.5-coder:latest",
+            speech_language="en-US",
+        )
+        with patch.object(assistant, "_search_and_summarize", return_value="summary") as search:
+            response = assistant.handle("search the web for local weather")
+
+        self.assertEqual(response, "summary")
+
     def test_available_models_uses_local_ollama_tags(self):
         response = io.BytesIO(
             json.dumps(
@@ -209,7 +266,7 @@ class AssistantCoreTests(unittest.TestCase):
         self.assertIn("Vrijeme u Zagreb", response)
         self.assertIn("vedro, 14.2 °C", response)
         self.assertIn("Europe/Zagreb", response)
-        self.assertIn("open-meteo.com", response)
+        self.assertNotIn("Izvor:", response)
         self.assertEqual(open_url.call_count, 2)
         search.assert_not_called()
 

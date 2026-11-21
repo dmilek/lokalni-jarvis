@@ -12,10 +12,21 @@ const weatherSummary = document.querySelector("#weather-summary");
 const weatherStatus = document.querySelector("#weather-status");
 const weatherForecast = document.querySelector("#weather-forecast");
 const weeklyWeatherButton = document.querySelector("#weekly-weather-button");
+const coreCpuValue = document.querySelector("#core-cpu-value");
+const coreMemoryValue = document.querySelector("#core-memory-value");
+const coreDataCpu = document.querySelector("#core-data-cpu");
+const coreDataMemory = document.querySelector("#core-data-memory");
+const coreDataDisk = document.querySelector("#core-data-disk");
 const settingsOpenButton = document.querySelector("#settings-open-button");
 const settingsDialog = document.querySelector("#settings-dialog");
 const settingsForm = document.querySelector("#settings-form");
+const settingsName = document.querySelector("#settings-name");
 const settingsModel = document.querySelector("#settings-model");
+const settingsFastModel = document.querySelector("#settings-fast-model");
+const settingsQualityModel = document.querySelector("#settings-quality-model");
+const settingsAutoRouting = document.querySelector("#settings-auto-routing");
+const settingsWakeEnabled = document.querySelector("#settings-wake-enabled");
+const settingsWakeWord = document.querySelector("#settings-wake-word");
 const settingsLanguage = document.querySelector("#settings-language");
 const settingsTheme = document.querySelector("#settings-theme");
 const settingsLocation = document.querySelector("#settings-location");
@@ -32,6 +43,7 @@ const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecogni
 
 let isBusy = false;
 let isListening = false;
+let wakeListening = false;
 let recognition = null;
 let tasks = [];
 let tasksLoadError = false;
@@ -45,6 +57,32 @@ const BRIEFING_DATE_STORAGE_KEY = "jarvis.briefing-date";
 function setStatus(message, state = "ready") {
   statusMessage.textContent = message;
   statusMessage.dataset.state = state;
+}
+
+function applyAssistantName(name) {
+  if (!name) {
+    return;
+  }
+  document.title = `Lokalni ${name}`;
+  const brandTitle = document.querySelector(".brand h1");
+  brandTitle.textContent = name;
+  document.querySelectorAll(".message-author").forEach((element) => {
+    const suffix = element.querySelector("span");
+    element.replaceChildren(document.createTextNode(`${name} `));
+    if (suffix) {
+      element.append(suffix);
+    }
+  });
+  const footerStatus = document.querySelector(".footer span");
+  if (footerStatus) {
+    const mark = document.createElement("span");
+    mark.className = "footer-mark";
+    mark.setAttribute("aria-hidden", "true");
+    mark.textContent = "◆";
+    footerStatus.replaceChildren(mark, document.createTextNode(` ${name} · RADI NA TVOM RAČUNALU`));
+  }
+  document.querySelector("#settings-title").textContent = "Postavke asistenta";
+  document.querySelector(".conversation").setAttribute("aria-label", `Razgovor s ${name}`);
 }
 
 function appendLinkedText(element, text) {
@@ -90,14 +128,17 @@ function addMessage(role, text) {
   const avatar = document.createElement("div");
   avatar.className = "message-avatar";
   avatar.setAttribute("aria-hidden", "true");
-  avatar.textContent = role === "user" ? "TI" : "J";
+  avatar.textContent = role === "user" ? "TI" : "M";
 
   const content = document.createElement("div");
   content.className = "message-content";
 
   const author = document.createElement("span");
   author.className = "message-author";
-  author.textContent = role === "user" ? "TI" : "JARVIS";
+  author.textContent =
+    role === "user"
+      ? "TI"
+      : document.querySelector(".brand h1").textContent;
 
   const bubble = document.createElement("div");
   bubble.className = "message-bubble";
@@ -247,10 +288,11 @@ function findTaskDueDate(text) {
 function parseTaskCommand(message) {
   const normalized = message.trim().replace(/^jarvis[,\s]+/iu, "");
   const commandPatterns = [
-    /^(?:dodaj|spremi|zapiši|zabilježi|upiši|stavi)\s+(?:(?:mi\s+)?(?:u\s+(?:moj(?:em)?\s+)?(?:popis|listu)\s+)?(?:obavezu|obaveze|zadatak|zadatke))\s*[:,—–-]?\s*(.*)$/iu,
+    /^(?:dodaj|spremi|zapiši|zabilježi|upiši|stavi)\s+(?:(?:mi\s+)?(?:u\s+(?:moj(?:em)?\s+)?(?:popis|listu)\s+)?(?:obavezu|obaveze|zadatak|zadatke|task|tasks))\s*[:,—–-]?\s*(.*)$/iu,
     /^podsjeti\s+me(?:\s+da)?\s*(.*)$/iu,
     /^(?:nemoj\s+zaboraviti|ne\s+zaboravi|zapamti)(?:\s+da)?\s*(.*)$/iu,
     /^(?:remind\s+me(?:\s+to)?|add\s+(?:a\s+)?(?:task|reminder)\s*[:,—–-]?)\s*(.*)$/iu,
+    /^((?:odvesti|odnijeti|kupiti|nazvati|naručiti|otići|zakazati|platiti|obaviti|popraviti|pokupiti|spremiti|preuzeti|završiti|baciti|poslati|odraditi|napraviti|rezervirati|provjeriti|pokrenuti|dovesti|donijeti|podnijeti)\b.*)$/iu,
   ];
   const match = commandPatterns.map((pattern) => normalized.match(pattern)).find(Boolean);
   if (!match) {
@@ -271,6 +313,7 @@ function parseTaskCommand(message) {
   }
   title = title
     .replace(/^\s*(?:da|to)\s+/iu, "")
+    .replace(/^\s*moram\s+/iu, "")
     .replace(/\b(?:rok|do)\s*$/iu, "")
     .replace(/^[\s,:;—–-]+|[\s,:;.!?—–-]+$/gu, "")
     .replace(/\s+/g, " ")
@@ -433,22 +476,32 @@ function updateDailyBriefingTasks() {
   const dueTasks = tasks
     .filter((task) => !task.done && task.dueDate <= today)
     .sort((left, right) => left.dueDate.localeCompare(right.dueDate));
+  const upcomingTasks = tasks
+    .filter((task) => !task.done && task.dueDate > today)
+    .sort((left, right) => left.dueDate.localeCompare(right.dueDate));
   const overdueCount = dueTasks.filter((task) => task.dueDate < today).length;
   const todayCount = dueTasks.length - overdueCount;
-  summary.textContent = dueTasks.length
-    ? `Obaveze: ${todayCount} za danas, ${overdueCount} s isteklim rokom.`
-    : "Nema otvorenih obaveza za danas.";
+  if (dueTasks.length) {
+    summary.textContent = `Obaveze: ${todayCount} za danas, ${overdueCount} s isteklim rokom.`;
+  } else if (upcomingTasks.length) {
+    summary.textContent = `Nema otvorenih obaveza za danas. Uskoro: ${upcomingTasks.length}.`;
+  } else {
+    summary.textContent = "Nema otvorenih obaveza za danas.";
+  }
 
-  for (const task of dueTasks.slice(0, 4)) {
+  const briefingTasks = [...dueTasks, ...upcomingTasks];
+  for (const task of briefingTasks.slice(0, 4)) {
     const item = document.createElement("li");
     item.textContent = task.dueDate < today
       ? `${task.title} (rok ${formatForecastDate(task.dueDate)})`
-      : task.title;
+      : task.dueDate > today
+        ? `${task.title} (${formatForecastDate(task.dueDate)})`
+        : task.title;
     list.append(item);
   }
-  if (dueTasks.length > 4) {
+  if (briefingTasks.length > 4) {
     const more = document.createElement("li");
-    more.textContent = `i još ${dueTasks.length - 4}`;
+    more.textContent = `i još ${briefingTasks.length - 4}`;
     list.append(more);
   }
 }
@@ -508,28 +561,110 @@ function setBusy(busy) {
   micButton.disabled = busy || !SpeechRecognition;
 }
 
-async function loadWeather(location) {
+async function loadWeather(location, coordinates = null) {
   weatherStatus.textContent = "PROVJERA";
   weatherStatus.dataset.state = "working";
   try {
-    const response = await fetch(
-      `/api/weather?location=${encodeURIComponent(location)}`
-    );
+    const url = coordinates
+      ? `/api/weather/forecast/coordinates?latitude=${encodeURIComponent(coordinates.latitude)}&longitude=${encodeURIComponent(coordinates.longitude)}`
+      : `/api/weather/forecast?location=${encodeURIComponent(location)}`;
+    const response = await fetch(url);
     const payload = await response.json();
     if (!response.ok) {
       throw new Error(payload.error || "Vrijeme nije moguće provjeriti.");
     }
-    weatherLocation.textContent = location;
-    weatherSummary.textContent = payload.reply;
-    weatherForecast.hidden = true;
+    weatherLocation.textContent = payload.location;
+    const today = payload.days[0];
+    if (!today) {
+      throw new Error("Današnja prognoza nije dostupna.");
+    }
+    weatherSummary.textContent =
+      payload.country
+        ? `${payload.location}, ${payload.country} · ${today.condition}`
+        : `${payload.location} · ${today.condition}`;
+    weatherForecast.replaceChildren();
+    const card = document.createElement("article");
+    card.className = "forecast-day today-forecast";
+    const date = document.createElement("strong");
+    date.textContent = "DANAS";
+    const icon = document.createElement("span");
+    icon.className = "forecast-icon";
+    icon.setAttribute("aria-hidden", "true");
+    icon.textContent = forecastIcon(today.condition);
+    const temperatures = document.createElement("span");
+    temperatures.className = "forecast-temperatures";
+    temperatures.textContent =
+      `${Math.round(today.temperature_min)}° / ${Math.round(today.temperature_max)}°`;
+    const condition = document.createElement("span");
+    condition.className = "forecast-condition";
+    condition.textContent = today.condition;
+    const rain = document.createElement("span");
+    rain.className = "forecast-rain";
+    rain.textContent =
+      `${today.precipitation_probability}% mogućnost oborine`;
+    card.append(date, icon, temperatures, condition, rain);
+    weatherForecast.append(card);
+    for (const day of payload.days) {
+      const forecastCard = document.createElement("article");
+      forecastCard.className = "forecast-day";
+      const date = document.createElement("strong");
+      date.textContent = formatForecastDate(day.date);
+      const icon = document.createElement("span");
+      icon.className = "forecast-icon";
+      icon.setAttribute("aria-hidden", "true");
+      icon.textContent = forecastIcon(day.condition);
+      const temperatures = document.createElement("span");
+      temperatures.className = "forecast-temperatures";
+      temperatures.textContent =
+        `${Math.round(day.temperature_min)}° / ${Math.round(day.temperature_max)}°`;
+      const condition = document.createElement("span");
+      condition.className = "forecast-condition";
+      condition.textContent = day.condition;
+      const rain = document.createElement("span");
+      rain.className = "forecast-rain";
+      rain.textContent = `${day.precipitation_probability}% kiša`;
+      forecastCard.append(date, icon, temperatures, condition, rain);
+      weatherForecast.append(forecastCard);
+    }
+    weatherForecast.hidden = false;
+    latestForecastDay = today;
+    updateDailyBriefingWeather();
     weatherStatus.textContent = "AŽURNO";
     weatherStatus.dataset.state = "ready";
   } catch (error) {
+    weatherForecast.hidden = true;
+    latestForecastDay = null;
+    forecastLoadError = true;
+    updateDailyBriefingWeather();
     weatherSummary.textContent =
       error instanceof Error ? error.message : "Nepoznata greška.";
     weatherStatus.textContent = "GREŠKA";
     weatherStatus.dataset.state = "error";
   }
+}
+
+function loadWeatherForDefaultLocation() {
+  const fallbackLocation = weatherLocationInput.value.trim();
+  if (!("geolocation" in navigator)) {
+    loadWeather(fallbackLocation);
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      loadWeather(fallbackLocation, {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      });
+    },
+    () => {
+      loadWeather(fallbackLocation);
+    },
+    {
+      enableHighAccuracy: false,
+      timeout: 8000,
+      maximumAge: 15 * 60 * 1000,
+    },
+  );
 }
 
 weatherForm.addEventListener("submit", (event) => {
@@ -574,70 +709,35 @@ function forecastIcon(condition) {
   return "🌡️";
 }
 
-async function loadWeeklyWeather(location) {
-  weatherStatus.textContent = "7 DANA";
-  weatherStatus.dataset.state = "working";
-  forecastLoadError = false;
-  try {
-    const response = await fetch(
-      `/api/weather/forecast?location=${encodeURIComponent(location)}`
-    );
-    const payload = await response.json();
-    if (!response.ok) {
-      throw new Error(payload.error || "Tjedna prognoza nije dostupna.");
-    }
-
-    weatherLocation.textContent = payload.location;
-    weatherSummary.textContent = `${payload.location}, ${payload.country}`;
-    latestForecastDay = payload.days[0] || null;
-    weatherForecast.replaceChildren();
-    for (const day of payload.days) {
-      const card = document.createElement("article");
-      card.className = "forecast-day";
-
-      const date = document.createElement("strong");
-      date.textContent = formatForecastDate(day.date);
-      const icon = document.createElement("span");
-      icon.className = "forecast-icon";
-      icon.setAttribute("aria-hidden", "true");
-      icon.textContent = forecastIcon(day.condition);
-      const temperatures = document.createElement("span");
-      temperatures.className = "forecast-temperatures";
-      temperatures.textContent =
-        `${Math.round(day.temperature_min)}° / ${Math.round(day.temperature_max)}°`;
-      const condition = document.createElement("span");
-      condition.className = "forecast-condition";
-      condition.textContent = day.condition;
-      const rain = document.createElement("span");
-      rain.className = "forecast-rain";
-      rain.textContent = `${day.precipitation_probability}% kiša`;
-
-      card.append(date, icon, temperatures, condition, rain);
-      weatherForecast.append(card);
-    }
-    weatherForecast.hidden = false;
-    forecastLoadError = false;
-    updateDailyBriefingWeather();
-    weatherStatus.textContent = "TJEDNO";
-    weatherStatus.dataset.state = "ready";
-  } catch (error) {
-    weatherForecast.hidden = true;
-    latestForecastDay = null;
-    forecastLoadError = true;
-    updateDailyBriefingWeather();
-    weatherSummary.textContent =
-      error instanceof Error ? error.message : "Nepoznata greška.";
-    weatherStatus.textContent = "GREŠKA";
-    weatherStatus.dataset.state = "error";
-  }
-}
-
 weeklyWeatherButton.addEventListener("click", () => {
   const location = weatherLocationInput.value.trim();
   if (location) {
-    loadWeeklyWeather(location);
+    loadWeather(location);
   }
 });
+
+async function loadSystemMetrics() {
+  try {
+    const response = await fetch("/api/system");
+    const metrics = await response.json();
+    if (!response.ok) {
+      throw new Error(metrics.error || "Sustavni podaci nisu dostupni.");
+    }
+    coreCpuValue.textContent =
+      `${metrics.cpu_percent.toFixed(1)}%`;
+    coreMemoryValue.textContent =
+      `${metrics.memory_percent.toFixed(1)}% RAM`;
+    coreDataCpu.textContent = `${metrics.cpu_percent.toFixed(1)}%`;
+    coreDataMemory.textContent = `${metrics.memory_percent.toFixed(1)}%`;
+    coreDataDisk.textContent = `${metrics.disk_percent.toFixed(1)}%`;
+  } catch {
+    coreCpuValue.textContent = "---";
+    coreMemoryValue.textContent = "NEDOSTUPNO";
+    coreDataCpu.textContent = "--";
+    coreDataMemory.textContent = "--";
+    coreDataDisk.textContent = "--";
+  }
+}
 
 async function loadSettings() {
   settingsStatus.textContent = "Učitavam postavke...";
@@ -652,11 +752,27 @@ async function loadSettings() {
     settingsLanguage.value = settings.speech_language;
     settingsTheme.value = settings.theme;
     settingsLocation.value = settings.weather_location;
+    settingsName.value = settings.assistant_name;
+    settingsFastModel.replaceChildren();
+    settingsQualityModel.replaceChildren();
+    settingsAutoRouting.checked = settings.auto_model_routing;
+    settingsWakeEnabled.checked = settings.voice_wake_enabled;
+    settingsWakeWord.value = settings.voice_wake_word;
+    window.jarvisWakeEnabled = settings.voice_wake_enabled;
+    window.jarvisWakeWord = settings.voice_wake_word;
     settingsModel.replaceChildren();
     const currentModel = document.createElement("option");
     currentModel.value = settings.ollama_model;
     currentModel.textContent = `${settings.ollama_model} (trenutačni model)`;
     settingsModel.append(currentModel);
+    const fastCurrent = currentModel.cloneNode(true);
+    const qualityCurrent = currentModel.cloneNode(true);
+    fastCurrent.value = settings.fast_model;
+    qualityCurrent.value = settings.quality_model;
+    fastCurrent.textContent = `${settings.fast_model} (brzi model)`;
+    qualityCurrent.textContent = `${settings.quality_model} (kvalitetni model)`;
+    settingsFastModel.append(fastCurrent);
+    settingsQualityModel.append(qualityCurrent);
 
     const modelsResponse = await fetch("/api/models");
     const modelsPayload = await modelsResponse.json();
@@ -677,8 +793,18 @@ async function loadSettings() {
       option.value = model;
       option.textContent = model;
       settingsModel.append(option);
+      const fastOption = option.cloneNode(true);
+      const qualityOption = option.cloneNode(true);
+      settingsFastModel.append(fastOption);
+      settingsQualityModel.append(qualityOption);
     }
     settingsModel.value = settings.ollama_model;
+    settingsFastModel.value = modelNames.has(settings.fast_model)
+      ? settings.fast_model
+      : settings.ollama_model;
+    settingsQualityModel.value = modelNames.has(settings.quality_model)
+      ? settings.quality_model
+      : settings.ollama_model;
     settingsStatus.textContent = modelsPayload.models.length
       ? "Odaberi postavke i spremi promjene."
       : "Ollama nema instaliranih modela; zadržan je trenutačni model.";
@@ -700,7 +826,13 @@ settingsForm.addEventListener("submit", async (event) => {
   settingsStatus.textContent = "Spremam postavke...";
   settingsStatus.dataset.state = "working";
   const settings = {
+    assistant_name: settingsName.value.trim(),
     ollama_model: settingsModel.value,
+    fast_model: settingsFastModel.value,
+    quality_model: settingsQualityModel.value,
+    auto_model_routing: settingsAutoRouting.checked,
+    voice_wake_enabled: settingsWakeEnabled.checked,
+    voice_wake_word: settingsWakeWord.value.trim(),
     speech_language: settingsLanguage.value,
     weather_location: settingsLocation.value.trim(),
     theme: settingsTheme.value,
@@ -720,10 +852,13 @@ settingsForm.addEventListener("submit", async (event) => {
     }
 
     window.jarvisSpeechLanguage = payload.speech_language;
+    window.jarvisWakeEnabled = payload.voice_wake_enabled;
+    window.jarvisWakeWord = payload.voice_wake_word;
     if (recognition) {
       recognition.lang = payload.speech_language;
     }
     document.documentElement.dataset.theme = payload.theme;
+    applyAssistantName(payload.assistant_name);
     weatherLocationInput.value = payload.weather_location;
     weatherLocation.textContent = payload.weather_location;
     document.querySelectorAll(".model-name, .model-readout").forEach((element) => {
@@ -731,7 +866,7 @@ settingsForm.addEventListener("submit", async (event) => {
       element.title = payload.ollama_model;
     });
     settingsDialog.close();
-    loadWeeklyWeather(payload.weather_location);
+    loadWeatherForDefaultLocation();
   } catch (error) {
     settingsStatus.textContent =
       error instanceof Error ? error.message : "Postavke nije moguće spremiti.";
@@ -824,7 +959,13 @@ renderTasks();
 if (isFirstOpenToday()) {
   showDailyBriefing(true);
 }
-loadWeeklyWeather(weatherLocationInput.value.trim());
+loadWeatherForDefaultLocation();
+loadSystemMetrics();
+window.setInterval(loadSystemMetrics, 1000);
+window.setInterval(
+  loadWeatherForDefaultLocation,
+  15 * 60 * 1000,
+);
 
 async function sendMessage(rawMessage, source = "text") {
   const message = rawMessage.trim();
@@ -886,7 +1027,10 @@ async function sendMessage(rawMessage, source = "text") {
   addMessage("user", message);
   input.value = "";
   setBusy(true);
-  setStatus("Jarvis razmišlja...", "working");
+  setStatus(
+    `${document.querySelector(".brand h1").textContent} razmišlja...`,
+    "working",
+  );
 
   try {
     const response = await fetch("/api/chat", {
@@ -935,7 +1079,7 @@ input.addEventListener("keydown", (event) => {
 if (SpeechRecognition) {
   recognition = new SpeechRecognition();
   recognition.lang = window.jarvisSpeechLanguage || "hr-HR";
-  recognition.continuous = false;
+  recognition.continuous = true;
   recognition.interimResults = false;
   recognition.maxAlternatives = 1;
 
@@ -944,12 +1088,14 @@ if (SpeechRecognition) {
       return;
     }
     if (isListening) {
+      wakeListening = false;
       recognition.stop();
       return;
     }
     try {
       recognition.start();
       isListening = true;
+      wakeListening = window.jarvisWakeEnabled === true;
       micButton.classList.add("is-listening");
       micButton.setAttribute("aria-pressed", "true");
       micLabel.textContent = "Slušam...";
@@ -961,10 +1107,28 @@ if (SpeechRecognition) {
 
   recognition.addEventListener("result", (event) => {
     const transcript = event.results[0][0].transcript.trim();
-    if (transcript) {
-      input.value = transcript;
-      sendMessage(transcript, "voice");
+    if (!transcript) {
+      return;
     }
+    if (window.jarvisWakeEnabled) {
+      const wakeWord = (window.jarvisWakeWord || "hej major").toLocaleLowerCase();
+      const normalized = transcript.toLocaleLowerCase();
+      const wakeIndex = normalized.indexOf(wakeWord);
+      if (wakeIndex < 0) {
+        setStatus(`Čekam aktivacijsku frazu: ${window.jarvisWakeWord}`, "working");
+        return;
+      }
+      const command = transcript.slice(wakeIndex + wakeWord.length).replace(/^[,.:;\s-]+/, "").trim();
+      if (!command) {
+        setStatus("Aktiviran — izgovori naredbu.", "working");
+        return;
+      }
+      input.value = command;
+      sendMessage(command, "voice");
+      return;
+    }
+    input.value = transcript;
+    sendMessage(transcript, "voice");
   });
 
   recognition.addEventListener("error", (event) => {
@@ -981,6 +1145,19 @@ if (SpeechRecognition) {
     micButton.classList.remove("is-listening");
     micButton.setAttribute("aria-pressed", "false");
     micLabel.textContent = "Govori";
+    if (wakeListening && window.jarvisWakeEnabled) {
+      try {
+        recognition.start();
+        isListening = true;
+        micButton.classList.add("is-listening");
+        micButton.setAttribute("aria-pressed", "true");
+        micLabel.textContent = "Čekam...";
+        setStatus(`Čekam aktivacijsku frazu: ${window.jarvisWakeWord}`, "working");
+      } catch (error) {
+        wakeListening = false;
+      }
+      return;
+    }
     if (!isBusy && statusMessage.dataset.state === "working") {
       setStatus("Spreman");
     }

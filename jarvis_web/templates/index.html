@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="hr" data-theme="{{ theme }}">
+<html lang="{{ html_language }}" data-theme="{{ theme }}">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#090d18">
-    <title>Lokalni Jarvis</title>
+    <title>Lokalni {{ assistant_name }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script defer src="{{ url_for('static', filename='app.js') }}"></script>
   </head>
@@ -12,10 +12,9 @@
     <main class="app-shell">
       <header class="topbar">
         <div class="brand">
-          <div class="brand-mark" aria-hidden="true"><span>J</span></div>
           <div>
-            <p class="eyebrow">OSOBNO SUČELJE · LOKALNI SUSTAV</p>
-            <h1>JARVIS</h1>
+            <p class="eyebrow"><span class="eyebrow-line"></span> OSOBNO SUČELJE · LOKALNI SUSTAV</p>
+            <h1>{{ assistant_name }}</h1>
           </div>
         </div>
         <div class="header-tools">
@@ -40,12 +39,28 @@
             <span class="system-state"><span aria-hidden="true"></span> AKTIVNA</span>
           </div>
 
-          <div class="core-display" aria-hidden="true">
+          <div class="core-display" aria-label="Aktualni podatci CPU-a i memorije">
+            <div class="core-grid" aria-hidden="true"></div>
+            <div class="core-scan" aria-hidden="true"></div>
             <div class="core-orbit core-orbit-outer"><span class="orbit-point"></span></div>
             <div class="core-orbit core-orbit-inner"><span class="orbit-point"></span></div>
-            <div class="core-lens"><span>J</span></div>
+            <div class="core-orbit core-orbit-technical" aria-hidden="true">
+              <i></i><i></i><i></i><i></i>
+            </div>
+            <div class="core-lens">
+              <div class="core-metric">
+                <strong id="core-cpu-value">MJERIM</strong>
+                <span>CPU</span>
+                <b id="core-memory-value">MJERIM · RAM</b>
+              </div>
+            </div>
             <span class="core-crosshair core-crosshair-top"></span>
             <span class="core-crosshair core-crosshair-bottom"></span>
+            <div class="core-data-strip" aria-label="Stanje sustava">
+              <span><b id="core-data-cpu">--%</b> CPU</span>
+              <span><b id="core-data-memory">--%</b> RAM</span>
+              <span><b id="core-data-disk">--%</b> DISK</span>
+            </div>
             <p class="core-caption">NEURALNO SUČELJE</p>
           </div>
 
@@ -75,56 +90,15 @@
               <button type="submit" aria-label="Provjeri vrijeme">↗</button>
             </label>
             <button id="weekly-weather-button" class="weekly-weather-button" type="button">
-              <span>OSVJEŽI 7-DNEVNU PROGNOZU</span>
+              <span>OSVJEŽI PROGNOZU</span>
               <span aria-hidden="true">↻</span>
             </button>
           </form>
 
-          <div class="system-readouts">
-            <div class="readout">
-              <span class="readout-label">MODEL</span>
-              <strong class="readout-value model-readout" title="{{ model }}">{{ model }}</strong>
-            </div>
-            <div class="readout">
-              <span class="readout-label">OBRADA</span>
-              <strong class="readout-value"><span class="readout-indicator"></span> LOKALNA</strong>
-            </div>
-            <div class="readout">
-              <span class="readout-label">KANALI</span>
-              <strong class="readout-value">CHAT · GLAS · WEB</strong>
-            </div>
-          </div>
-
-          <div class="channel-strip" aria-hidden="true">
-            <span class="channel-bar"></span>
-            <span class="channel-bar"></span>
-            <span class="channel-bar"></span>
-            <span class="channel-bar"></span>
-            <span class="channel-bar"></span>
-            <span class="channel-bar"></span>
-            <span class="channel-bar"></span>
-            <span class="channel-bar"></span>
-            <span class="channel-bar"></span>
-            <span class="channel-bar"></span>
-            <span class="channel-bar"></span>
-            <span class="channel-bar"></span>
-            <span class="channel-bar"></span>
-            <span class="channel-bar"></span>
-            <span class="channel-bar"></span>
-            <span class="channel-bar"></span>
-            <span class="channel-bar"></span>
-            <span class="channel-bar"></span>
-            <span class="channel-bar"></span>
-            <span class="channel-bar"></span>
-            <span class="channel-bar"></span>
-            <span class="channel-bar"></span>
-            <span class="channel-bar"></span>
-            <span class="channel-bar"></span>
-          </div>
           <p class="panel-footnote"><span aria-hidden="true">◆</span> LOKALNI NAČIN RADA</p>
         </aside>
 
-        <section class="conversation panel" aria-label="Razgovor s Jarvisom">
+        <section class="conversation panel" aria-label="Razgovor s asistentom">
           <div class="conversation-heading">
             <div>
               <p class="eyebrow">SESIJA / SPREMNA ZA UNOS</p>
@@ -143,9 +117,9 @@
 
           <div id="messages" class="messages" aria-live="polite">
             <article class="message assistant-message">
-              <div class="message-avatar" aria-hidden="true">J</div>
+              <div class="message-avatar" aria-hidden="true">{{ assistant_name[0] }}</div>
               <div class="message-content">
-                <span class="message-author">JARVIS <span>· ASISTENT</span></span>
+                <span class="message-author">{{ assistant_name }} <span>· ASISTENT</span></span>
                 <div class="message-bubble">{{ greeting }}</div>
               </div>
             </article>
@@ -154,7 +128,7 @@
           <div id="status" class="status" role="status">SPREMAN</div>
 
           <form id="chat-form" class="composer">
-            <label class="sr-only" for="message-input">Poruka za Jarvisa</label>
+            <label class="sr-only" for="message-input">Poruka za asistenta</label>
             <textarea
               id="message-input"
               name="message"
@@ -182,7 +156,7 @@
           <p class="privacy-note">
             Razgovor ide lokalnom modelu. Upit o vremenu šalje naziv mjesta
             Open-Meteu. Glasovno prepoznavanje šalje zvuk online pružatelju usluge;
-            Jarvis ga ne pohranjuje.
+            {{ assistant_name }} ga ne pohranjuje.
           </p>
         </section>
       </div>
@@ -191,16 +165,40 @@
         <div class="dialog-heading">
           <div>
             <p class="eyebrow">LOKALNA KONFIGURACIJA</p>
-            <h2 id="settings-title">Postavke Jarvisa</h2>
+            <h2 id="settings-title">Postavke asistenta</h2>
           </div>
           <button class="dialog-close" type="button" data-close-dialog aria-label="Zatvori">
             ×
           </button>
         </div>
         <form id="settings-form" class="settings-form">
+          <label for="settings-name">
+            Ime asistenta
+            <input id="settings-name" name="assistant_name" type="text" maxlength="40" required>
+          </label>
           <label for="settings-model">
             Ollama model
             <select id="settings-model" name="ollama_model" required></select>
+          </label>
+          <label for="settings-fast-model">
+            Brzi model za kratke i jednostavne upite
+            <select id="settings-fast-model" name="fast_model"></select>
+          </label>
+          <label for="settings-quality-model">
+            Kvalitetni model za kod, analizu i kompleksne zadatke
+            <select id="settings-quality-model" name="quality_model"></select>
+          </label>
+          <label for="settings-auto-routing">
+            <input id="settings-auto-routing" name="auto_model_routing" type="checkbox" checked>
+            Automatski odabir modela
+          </label>
+          <label for="settings-wake-enabled">
+            <input id="settings-wake-enabled" name="voice_wake_enabled" type="checkbox">
+            Aktiviranje glasom u polju GOVORI
+          </label>
+          <label for="settings-wake-word">
+            Aktivacijska fraza
+            <input id="settings-wake-word" name="voice_wake_word" type="text" maxlength="40" value="hej major">
           </label>
           <label for="settings-language">
             Jezik glasa
@@ -212,7 +210,7 @@
           <label for="settings-theme">
             Tema sučelja
             <select id="settings-theme" name="theme">
-              <option value="jarvis">Jarvis — tirkizna</option>
+              <option value="jarvis">Tirkizna</option>
               <option value="sunset">Zalazak — narančasta</option>
               <option value="violet">Ljubičasta</option>
             </select>
@@ -252,12 +250,14 @@
       </dialog>
 
       <footer class="footer">
-        <span><span class="footer-mark" aria-hidden="true">◆</span> JARVIS · RADI NA TVOM RAČUNALU</span>
+        <span><span class="footer-mark" aria-hidden="true">◆</span> {{ assistant_name }} · RADI NA TVOM RAČUNALU</span>
         <span>WEB-PRETRAGA / DUCKDUCKGO</span>
       </footer>
     </main>
     <script>
       window.jarvisSpeechLanguage = {{ speech_language|tojson }};
+      window.jarvisWakeEnabled = {{ voice_wake_enabled|tojson }};
+      window.jarvisWakeWord = {{ voice_wake_word|tojson }};
       window.jarvisCsrfToken = {{ csrf_token|tojson }};
     </script>
   </body>

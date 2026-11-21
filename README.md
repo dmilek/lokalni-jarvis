@@ -1,8 +1,12 @@
-# Lokalni Jarvis
+# Lokalni M.A.J.O.R.
 
-Jarvis je web-aplikacija za lokalno računalo. Razgovor obrađuje lokalni Ollama
+M.A.J.O.R. je web-aplikacija za lokalno računalo. Razgovor obrađuje lokalni Ollama
 model; web-pretraga koristi DuckDuckGo, a trenutačne vremenske podatke
 Open-Meteo.
+
+Ime asistenta nije unaprijed određeno. Svaki korisnik može unijeti svoje ime u
+**Postavke → Ime asistenta**. Trenutačno naziv M.A.J.O.R. predstavlja samo
+zadanu konfiguraciju aplikacije.
 
 ## Kompatibilnost s Pythonom
 
@@ -26,9 +30,9 @@ python jarvis_gui.py
 Za ponovljivu instalaciju zaključanih verzija možeš koristiti `uv sync --locked`.
 
 Otvori [http://127.0.0.1:8000](http://127.0.0.1:8000). Terminal mora ostati
-otvoren dok koristiš Jarvisa. Za gašenje servera pritisni `Ctrl+C`.
+otvoren dok koristiš M.A.J.O.R. Za gašenje servera pritisni `Ctrl+C`.
 
-Ollama mora biti pokrenut. Ako se Jarvis ne može povezati, otvori Ollama
+Ollama mora biti pokrenut. Ako se M.A.J.O.R. ne može povezati, otvori Ollama
 aplikaciju i provjeri instalirane modele naredbom `ollama list`.
 
 ## Promjena Ollama modela
@@ -52,17 +56,19 @@ aplikaciju i provjeri instalirane modele naredbom `ollama list`.
    "ollama_model": "qwen:14b"
    ```
 
-4. Zaustavi Jarvis s `Ctrl+C` i ponovno ga pokreni.
+4. Zaustavi M.A.J.O.R. s `Ctrl+C` i ponovno ga pokreni.
 
 Trenutačni model postavljen u konfiguraciji je `qwen2.5-coder:latest`.
 
 ## Glasovni unos
 
 Koristi Chrome ili Edge i dopusti pristup mikrofonu kada preglednik to zatraži.
+U postavkama možeš odabrati hrvatski ili engleski jezik govora; isto odabrano
+stanje koristi M.A.J.O.R. za sustavni prompt i lokalne tekstualne odgovore.
 Online prepoznavanje govora može slati audio pružatelju usluge preglednika;
-Jarvis ga ne pohranjuje. Tekstualni unos radi u svim preglednicima.
+M.A.J.O.R. ga ne pohranjuje. Tekstualni unos radi u svim preglednicima.
 
-## Što Jarvis može napraviti
+## Što M.A.J.O.R. može napraviti
 
 Može razgovarati s Ollamom, reći lokalni datum i vrijeme, provjeriti vrijeme u
 mjestu pitanjem poput `kakvo je vrijeme u Zagrebu`, prikazati 7-dnevnu prognozu,
@@ -84,8 +90,19 @@ udaljene promjene rebaseom, zatim commitira sve staged promjene i šalje ih na
 `origin/<trenutačna-grana>`. Ako rebase zaključa, commit i push se ne izvode.
 Naredbe mogu otvoriti dopuštene
 macOS aplikacije Safari, Chrome, Finder, Terminal i Visual Studio Code.
-Jarvis ne izvršava proizvoljne terminalske naredbe niti mijenja datoteke.
+M.A.J.O.R. ne izvršava proizvoljne terminalske naredbe niti mijenja datoteke.
 Server sluša samo na ovom računalu (`127.0.0.1:8000`).
+
+## Automatski izbor Ollama modela i glasovna aktivacija
+
+Postavke mogu odrediti brzi i kvalitetni model. Za kratke upite M.A.J.O.R.
+može koristiti brzi model, a za kod, analizu i kompleksne zadatke kvalitetni
+model. Automatski odabir može se isključiti.
+
+Glasovna aktivacija može se uključiti u Postavkama. Nakon pritiska na `GOVORI`
+asistent čeka aktivacijsku frazu, npr. `hej major`, pa šalje ostatak govora kao
+naredbu. Trenutačni Web Speech API u Chromeu i Edgeu može obrađivati zvuk
+online; M.A.J.O.R. ne pohranjuje snimku.
 
 ## MCP za GitHub Copilot
 
@@ -106,6 +123,10 @@ Za korištenje MCP servera u VS Codeu dodaj konfiguraciju u
 
 Server pokreće lokalni `jarvis_mcp.py` i nudi alate za vrijeme, testove, build,
 Git status, commit i sigurnu sinkronizaciju.
+Nudi i dopuštene radnje: otvaranje Safari, Chrome, Finder, Terminala i Visual
+Studio Codea te čitanje/popis datoteka unutar projekta. MCP ne dopušta
+proizvoljne terminalske naredbe, izlaz iz direktorija projekta ili čitanje
+datoteka većih od 20 KB kao jednog rezultata.
 
 Ako server treba ponovno pokrenuti:
 

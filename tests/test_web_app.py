@@ -70,11 +70,42 @@ class WebAppTests(unittest.TestCase):
         response = self.client.get("/")
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn(b"Lokalni Jarvis", response.data)
+        self.assertIn(b"Lokalni M.A.J.O.R.", response.data)
         self.assertIn(b"Bok!", response.data)
         self.assertIn(b"settings-dialog", response.data)
         self.assertIn(b"tasks-dialog", response.data)
         self.assertIn(b"jarvisCsrfToken", response.data)
+        self.assertIn(b"core-cpu-value", response.data)
+        self.assertIn(b"core-memory-value", response.data)
+
+    def test_system_metrics_api_returns_real_usage_fields(self):
+        response = self.client.get("/api/system")
+
+        self.assertEqual(response.status_code, 200)
+        metrics = response.get_json()
+        for key in (
+            "cpu_percent",
+            "process_cpu_percent",
+            "memory_percent",
+            "memory_used_gb",
+            "memory_total_gb",
+            "disk_percent",
+            "disk_used_gb",
+            "disk_total_gb",
+            "process_memory_mb",
+            "uptime_seconds",
+        ):
+            self.assertIn(key, metrics)
+
+    def test_task_parser_supports_natural_croatian_imperatives(self):
+        app_js = Path(__file__).resolve().parents[1] / "jarvis_web" / "static" / "app.js"
+        source = app_js.read_text(encoding="utf-8")
+
+        parser_section = source[source.index("function parseTaskCommand"):source.index("function isDailyBriefingCommand")]
+        self.assertIn("odvesti", parser_section.lower())
+        self.assertIn("odvesti|odnijeti|kupiti", parser_section)
+        self.assertIn("task|tasks", parser_section)
+        self.assertIn("moram", parser_section)
 
     def test_chat_api_returns_assistant_reply(self):
         response = self.post_json("/api/chat", json={"message": "Pozdrav"})
@@ -96,7 +127,7 @@ class WebAppTests(unittest.TestCase):
             response.get_json(),
             {
                 "error": (
-                    "Jarvis trenutno ne može odgovoriti. "
+                    "M.A.J.O.R. trenutno ne može odgovoriti. "
                     "Provjeri lokalni model i pokušaj ponovno."
                 )
             },
@@ -152,6 +183,14 @@ class WebAppTests(unittest.TestCase):
         self.assertEqual(forecast["location"], "Zagreb")
         self.assertEqual(len(forecast["days"]), 1)
 
+    def test_coordinate_forecast_api_rejects_invalid_coordinates(self):
+        response = self.client.get(
+            "/api/weather/forecast/coordinates?latitude=not-a-number&longitude=0"
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Koordinate", response.get_json()["error"])
+
     def test_settings_api_returns_local_preferences(self):
         response = self.client.get("/api/settings")
 
@@ -159,7 +198,13 @@ class WebAppTests(unittest.TestCase):
         self.assertEqual(
             response.get_json(),
             {
+                "assistant_name": "M.A.J.O.R.",
                 "ollama_model": "test-model",
+                "fast_model": "test-model",
+                "quality_model": "test-model",
+                "auto_model_routing": True,
+                "voice_wake_enabled": False,
+                "voice_wake_word": "hej major",
                 "speech_language": "hr-HR",
                 "weather_location": "Zagreb",
                 "theme": "jarvis",
@@ -176,6 +221,7 @@ class WebAppTests(unittest.TestCase):
         response = self.post_json(
             "/api/settings",
             json={
+                "assistant_name": "MIHAEL",
                 "ollama_model": "other-model",
                 "speech_language": "en-US",
                 "weather_location": "Split",
@@ -184,6 +230,7 @@ class WebAppTests(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["assistant_name"], "MIHAEL")
         self.assertEqual(response.get_json()["ollama_model"], "other-model")
         self.assertEqual(response.get_json()["weather_location"], "Split")
         settings = self.client.get("/api/settings").get_json()

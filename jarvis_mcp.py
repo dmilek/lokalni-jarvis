@@ -1,12 +1,13 @@
 from mcp.server.fastmcp import FastMCP
+from pathlib import Path
 
 from assistant_core import AssistantCore
 
 
 mcp = FastMCP(
-    "Lokalni Jarvis",
+    "M.A.J.O.R.",
     instructions=(
-        "Koristi lokalne Jarvis alate za vrijeme, testove, build i dopuštene Git "
+        "Koristi lokalne M.A.J.O.R. alate za vrijeme, testove, build i dopuštene Git "
         "operacije. Ne izmišljaj rezultate terminala i ne koristi force push."
     ),
 )
@@ -69,6 +70,58 @@ def git_sync(message: str) -> str:
 def open_project_in_vscode() -> str:
     """Otvoriti ovaj projekt u Visual Studio Codeu."""
     return _assistant().handle("otvori ovaj projekt u VSCode")
+
+
+ALLOWED_APPS = {
+    "safari": "Safari",
+    "chrome": "Google Chrome",
+    "finder": "Finder",
+    "terminal": "Terminal",
+    "visual studio code": "Visual Studio Code",
+}
+
+
+@mcp.tool()
+def open_allowed_app(app_name: str) -> str:
+    """Otvoriti samo unaprijed dopuštenu macOS aplikaciju."""
+    key = app_name.strip().casefold()
+    if key not in ALLOWED_APPS:
+        raise ValueError("Aplikacija nije na dopuštenoj listi.")
+    return _assistant().handle(f"otvori {key}")
+
+
+@mcp.tool()
+def list_project_files(directory: str = "") -> list[str]:
+    """Prikaži datoteke unutar projekta do 200 stavki. Potputanje mora ostati unutar projekta."""
+    root = Path(__file__).resolve().parent
+    target = (root / directory).resolve()
+    if target != root and root not in target.parents:
+        raise ValueError("Putanja je izvan projekta.")
+    if not target.exists() or not target.is_dir():
+        raise ValueError("Mapa projekta ne postoji.")
+    entries = sorted(
+        str(path.relative_to(root))
+        for path in target.iterdir()
+        if not path.name.startswith(".")
+        and "venv" not in path.parts
+        and "__pycache__" not in path.parts
+    )
+    return entries[:200]
+
+
+@mcp.tool()
+def read_project_file(path: str) -> str:
+    """Pročitaj jednu tekstualnu datoteku projekta, najviše 20 KB."""
+    root = Path(__file__).resolve().parent
+    target = (root / path).resolve()
+    if target != root and root not in target.parents:
+        raise ValueError("Putanja je izvan projekta.")
+    if not target.is_file():
+        raise ValueError("Datoteka ne postoji.")
+    data = target.read_text(encoding="utf-8")
+    if len(data) > 20_000:
+        raise ValueError("Datoteka je veća od 20 KB.")
+    return data
 
 
 def main():

@@ -1,8 +1,14 @@
 {
-  "greeting": "Pozdrav! Ja sam Jarvis, vaš osobni asistent.",
+  "assistant_name": "M.A.J.O.R.",
+  "greeting": "Pozdrav! Ja sam M.A.J.O.R., vaš osobni asistent.",
   "ollama_model": "qwen2.5-coder:latest",
+  "fast_model": "qwen2.5-coder:latest",
+  "quality_model": "qwen:14b",
+  "auto_model_routing": true,
   "ollama_url": "http://127.0.0.1:11434",
   "speech_language": "hr-HR",
+  "voice_wake_enabled": false,
+  "voice_wake_word": "hej major",
   "weather_location": "Zagreb",
   "theme": "jarvis"
 }
